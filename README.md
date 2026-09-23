@@ -11,6 +11,24 @@ uvicorn main:app --reload
 
 Open http://127.0.0.1:8000.
 
+## Run with Docker
+
+Build and start the app with:
+
+```powershell
+docker compose up --build -d
+```
+
+Open http://127.0.0.1:8000. SQLite data is persisted in the `matchline_data` Docker volume.
+
+Stop the container with:
+
+```powershell
+docker compose down
+```
+
+The Compose setup expects n8n to be available on the host at `http://localhost:5678`. If n8n runs in another container, change `N8N_WEBHOOK_URL` in `docker-compose.yml` to that service name, for example `http://n8n:5678/webhook/ats-resume-analysis`.
+
 ## n8n integration
 
 Import `n8n/matchline-resume-analysis.json` into n8n. The workflow receives:
