@@ -5,16 +5,16 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "ats-resume-analysis",
-        "responseMode": "onReceived",
-        "options": {
-          "binaryData": true
-        }
+        "options": {}
       },
-      "id": "matchline-webhook",
+      "id": "57767d67-4dda-4c74-87e0-4f362d17b596",
       "name": "Receive resume analysis",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
-      "position": [260, 300],
+      "position": [
+        416,
+        336
+      ],
       "webhookId": "ats-resume-analysis"
     },
     {
@@ -23,21 +23,27 @@
         "binaryPropertyName": "resume",
         "options": {}
       },
-      "id": "extract-resume",
+      "id": "3574e261-b405-45a9-b91a-98dd3cc89952",
       "name": "Extract resume text",
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
-      "position": [500, 300]
+      "position": [
+        656,
+        336
+      ]
     },
     {
       "parameters": {
         "jsCode": "const webhookData = $node['Receive resume analysis'].json.body || $node['Receive resume analysis'].json;\nconst resumeText = $json.text || $json.data || $json.extractedText || '';\nconst analysisId = webhookData.analysis_id;\n\nif (!analysisId || !webhookData.job_description || !resumeText) {\n  throw new Error('Expected analysis_id, job_description, and extracted resume text');\n}\n\nreturn [{\n  json: {\n    analysis_id: analysisId,\n    job_description: webhookData.job_description,\n    resume_text: resumeText\n  }\n}];"
       },
-      "id": "prepare-prompt",
+      "id": "0dbe49fe-b9ff-43a8-b1a3-9d04167b6824",
       "name": "Prepare analysis prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [740, 300]
+      "position": [
+        896,
+        336
+      ]
     },
     {
       "parameters": {
@@ -47,39 +53,32 @@
           "systemMessage": "You are an ATS analyst. Compare a resume against a job description. Return only valid JSON with integer score from 0 to 100, short verdict, summary, arrays named strengths, gaps, recommendations, matched_keywords, and missing_keywords. Do not include markdown fences or any text outside the JSON object."
         }
       },
-      "id": "analyze-with-agent",
+      "id": "254dadb8-5bd0-49de-b470-46a1bd621187",
       "name": "Analyze resume fit",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.9,
-      "position": [1000, 300]
-    },
-    {
-      "parameters": {
-        "modelName": "gpt-4o-mini",
-        "options": {
-          "responseFormat": "json_object"
-        }
-      },
-      "id": "openai-chat-model",
-      "name": "OpenAI Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.2,
-      "position": [1000, 540]
+      "position": [
+        1168,
+        336
+      ]
     },
     {
       "parameters": {
         "jsCode": "const content = $json.output || '{}';\nconst cleaned = content.replace(/^```json\\s*/i, '').replace(/\\s*```$/i, '').trim();\nconst result = JSON.parse(cleaned);\nconst analysisId = $node['Prepare analysis prompt'].json.analysis_id;\n\nreturn [{\n  json: {\n    analysis_id: analysisId,\n    result: {\n      score: Number(result.score),\n      verdict: result.verdict || 'Needs review',\n      summary: result.summary || '',\n      strengths: result.strengths || [],\n      gaps: result.gaps || [],\n      recommendations: result.recommendations || [],\n      matched_keywords: result.matched_keywords || [],\n      missing_keywords: result.missing_keywords || []\n    }\n  }\n}];"
       },
-      "id": "normalize-result",
+      "id": "79af6e44-78ab-4232-a01b-d455c95f3416",
       "name": "Normalize result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1240, 300]
+      "position": [
+        1408,
+        336
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{'http://host.docker.internal:8000/api/analyses/' + $json.analysis_id + '/result'}}",
+        "url": "={{'http://127.0.0.1:8000/api/analyses/' + $json.analysis_id + '/result'}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -95,40 +94,115 @@
         "body": "={{ JSON.stringify({ analysis_id: $json.analysis_id, status: 'completed', result: $json.result }) }}",
         "options": {}
       },
-      "id": "send-callback",
+      "id": "35223479-0781-4ff8-8e38-a5f82b311395",
       "name": "Send result to FastAPI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1480, 300]
+      "position": [
+        1648,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "model": "grok-4.20-0309-non-reasoning",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        544
+      ],
+      "id": "bb1d2d74-a740-44b9-bc0b-7efd39f1ddad",
+      "name": "xAI Grok Chat Model",
+      "credentials": {
+        "xAiApi": {
+          "id": "HQLlv6sOxCWh3LYB",
+          "name": "xAi account"
+        }
+      }
     }
   ],
+  "pinData": {},
   "connections": {
     "Receive resume analysis": {
-      "main": [[{"node": "Extract resume text", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Extract resume text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extract resume text": {
-      "main": [[{"node": "Prepare analysis prompt", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Prepare analysis prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Prepare analysis prompt": {
-      "main": [[{"node": "Analyze resume fit", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Analyze resume fit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Analyze resume fit": {
-      "main": [[{"node": "Normalize result", "type": "main", "index": 0}]]
-    },
-    "OpenAI Chat Model": {
-      "ai_languageModel": [[{"node": "Analyze resume fit", "type": "ai_languageModel", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Normalize result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Normalize result": {
-      "main": [[{"node": "Send result to FastAPI", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Send result to FastAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "xAI Grok Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze resume fit",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
-  "versionId": "matchline-v1",
+  "versionId": "d49612fb-9374-42b0-b6c5-23fbebdf5906",
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": true,
+    "instanceId": "159a4c65cb565bf4f3cf790003ff3fbafde547806ad4b9ec44db312f443e9895"
   },
+  "id": "s7dMxKZhEItczDFX",
   "tags": []
 }
