@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}My analyses | Matchline ATS{% endblock %}
+{% block content %}
+<section class="account-page">
+    <div class="account-header reveal">
+        <div>
+            <p class="eyebrow"><span class="eyebrow-line"></span> Matchline / Your workspace</p>
+            <h1>Your analysis<br><em>history.</em></h1>
+            <p>Every role you have explored, kept in one place.</p>
+        </div>
+        <a class="button button-primary" href="/analyze">New analysis <span aria-hidden="true">↗</span></a>
+    </div>
+
+    {% if analyses %}
+    <div class="history-toolbar"><span class="mini-label">{{ analyses|length }} ANALYSIS{% if analyses|length != 1 %}ES{% endif %}</span><span class="history-sort">Most recent first</span></div>
+    <div class="history-list">
+        {% for analysis in analyses %}
+        <a class="history-item reveal" href="{% if analysis.status == 'completed' %}/results/{{ analysis.analysis_id }}{% else %}/analyze{% endif %}">
+            <div class="history-index">{{ '%02d'|format(loop.index) }}</div>
+            <div class="history-main">
+                <div class="history-title-row"><h2>{{ analysis.filename }}</h2><span class="history-status status-{{ analysis.status }}">{{ analysis.status }}</span></div>
+                <p>{{ analysis.job_description|truncate(150, True) }}</p>
+                <span class="history-date">{{ analysis.created_at[:10] }} · {{ analysis.analysis_id }}</span>
+            </div>
+            <div class="history-score">
+                {% if analysis.result %}<strong>{{ analysis.result.score }}</strong><span>/ 100</span>{% else %}<span class="score-pending">—</span>{% endif %}
+                <span class="history-arrow">↗</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-history">
+        <span class="empty-mark">+</span>
+        <p class="mini-label">NO ANALYSES YET</p>
+        <h2>Your next match starts here.</h2>
+        <a class="text-link" href="/analyze">Run your first analysis <span aria-hidden="true">↗</span></a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
