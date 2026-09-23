@@ -1,0 +1,134 @@
+{
+  "name": "Matchline ATS - Resume Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ats-resume-analysis",
+        "responseMode": "onReceived",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "id": "matchline-webhook",
+      "name": "Receive resume analysis",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [260, 300],
+      "webhookId": "ats-resume-analysis"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "resume",
+        "options": {}
+      },
+      "id": "extract-resume",
+      "name": "Extract resume text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $node['Receive resume analysis'].json.body || $node['Receive resume analysis'].json;\nconst resumeText = $json.text || $json.data || $json.extractedText || '';\nconst analysisId = webhookData.analysis_id;\n\nif (!analysisId || !webhookData.job_description || !resumeText) {\n  throw new Error('Expected analysis_id, job_description, and extracted resume text');\n}\n\nreturn [{\n  json: {\n    analysis_id: analysisId,\n    job_description: webhookData.job_description,\n    resume_text: resumeText\n  }\n}];"
+      },
+      "id": "prepare-prompt",
+      "name": "Prepare analysis prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=JOB DESCRIPTION:\n{{ $json.job_description }}\n\nRESUME:\n{{ $json.resume_text }}",
+        "options": {
+          "systemMessage": "You are an ATS analyst. Compare a resume against a job description. Return only valid JSON with integer score from 0 to 100, short verdict, summary, arrays named strengths, gaps, recommendations, matched_keywords, and missing_keywords. Do not include markdown fences or any text outside the JSON object."
+        }
+      },
+      "id": "analyze-with-agent",
+      "name": "Analyze resume fit",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "modelName": "gpt-4o-mini",
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "openai-chat-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [1000, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.output || '{}';\nconst cleaned = content.replace(/^```json\\s*/i, '').replace(/\\s*```$/i, '').trim();\nconst result = JSON.parse(cleaned);\nconst analysisId = $node['Prepare analysis prompt'].json.analysis_id;\n\nreturn [{\n  json: {\n    analysis_id: analysisId,\n    result: {\n      score: Number(result.score),\n      verdict: result.verdict || 'Needs review',\n      summary: result.summary || '',\n      strengths: result.strengths || [],\n      gaps: result.gaps || [],\n      recommendations: result.recommendations || [],\n      matched_keywords: result.matched_keywords || [],\n      missing_keywords: result.missing_keywords || []\n    }\n  }\n}];"
+      },
+      "id": "normalize-result",
+      "name": "Normalize result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.ATS_BACKEND_URL || 'http://host.docker.internal:8000') + '/api/analyses/' + $json.analysis_id + '/result'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ analysis_id: $json.analysis_id, status: 'completed', result: $json.result }) }}",
+        "options": {}
+      },
+      "id": "send-callback",
+      "name": "Send result to FastAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1480, 300]
+    }
+  ],
+  "connections": {
+    "Receive resume analysis": {
+      "main": [[{"node": "Extract resume text", "type": "main", "index": 0}]]
+    },
+    "Extract resume text": {
+      "main": [[{"node": "Prepare analysis prompt", "type": "main", "index": 0}]]
+    },
+    "Prepare analysis prompt": {
+      "main": [[{"node": "Analyze resume fit", "type": "main", "index": 0}]]
+    },
+    "Analyze resume fit": {
+      "main": [[{"node": "Normalize result", "type": "main", "index": 0}]]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [[{"node": "Analyze resume fit", "type": "ai_languageModel", "index": 0}]]
+    },
+    "Normalize result": {
+      "main": [[{"node": "Send result to FastAPI", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "matchline-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

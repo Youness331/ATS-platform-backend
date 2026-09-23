@@ -9,7 +9,7 @@
         <div class="analysis-meta"><span class="status-dot">●</span><span>Your files stay private and are only used for this analysis.</span></div>
     </div>
 
-    <form class="analysis-form reveal reveal-delay" action="/analyze" method="post" enctype="multipart/form-data">
+    <form id="analysis-form" class="analysis-form reveal reveal-delay" action="/api/analyses" method="post" enctype="multipart/form-data">
         <div class="form-header"><span class="form-kicker">MATCHLINE / INPUT</span><span class="form-step">01 — 02</span></div>
         <label for="job-description">Job description <span>Required</span></label>
         <textarea id="job-description" name="job_description" placeholder="Paste the job description here..." required>{{ job_description or '' }}</textarea>
@@ -27,17 +27,37 @@
                 <button class="button button-primary" type="submit">Run pipeline <span aria-hidden="true">↗</span></button>
             </div>
         </div>
-        {% if submitted %}
-        <div class="submission-notice"><span>✓</span> Inputs received{% if resume_name %}: {{ resume_name }}{% endif %}. The scoring API will connect here next.</div>
-        {% endif %}
+        <div id="submission-notice" class="submission-notice" hidden></div>
     </form>
 </section>
 
 <script>
     const resumeInput = document.getElementById('resume');
     const fileName = document.getElementById('file-name');
+    const analysisForm = document.getElementById('analysis-form');
+    const notice = document.getElementById('submission-notice');
     resumeInput.addEventListener('change', () => {
         fileName.textContent = resumeInput.files.length ? resumeInput.files[0].name : 'Drop your resume here';
+    });
+    analysisForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = analysisForm.querySelector('button');
+        button.disabled = true;
+        button.firstChild.textContent = 'Sending ';
+        notice.hidden = true;
+        try {
+            const response = await fetch(analysisForm.action, { method: 'POST', body: new FormData(analysisForm) });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.detail || 'Unable to start analysis');
+            notice.innerHTML = '<span>✓</span> Analysis ' + payload.analysis_id + ' is now processing.';
+            notice.hidden = false;
+        } catch (error) {
+            notice.innerHTML = '<span>!</span> ' + error.message;
+            notice.hidden = false;
+        } finally {
+            button.disabled = false;
+            button.firstChild.textContent = 'Run pipeline ';
+        }
     });
 </script>
 {% endblock %}
