@@ -5,7 +5,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/ats-resume-analysis
+      N8N_WEBHOOK_URL: https://n8n-production-2387.up.railway.app/webhook/ats-resume-analysis
       MATCHLINE_DATABASE_PATH: /app/data/matchline.db
     extra_hosts:
       - "host.docker.internal:host-gateway"
