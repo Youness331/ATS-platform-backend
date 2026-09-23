@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Start an analysis | Matchline ATS{% endblock %}
+{% block content %}
+<section class="analyze-page">
+    <div class="analyze-intro reveal">
+        <p class="eyebrow"><span class="eyebrow-line"></span> Start an analysis</p>
+        <h1>Put the role<br><em>in context.</em></h1>
+        <p>Give us the job description and your current resume. We’ll turn the overlap into a signal you can act on.</p>
+        <div class="analysis-meta"><span class="status-dot">●</span><span>Your files stay private and are only used for this analysis.</span></div>
+    </div>
+
+    <form class="analysis-form reveal reveal-delay" action="/analyze" method="post" enctype="multipart/form-data">
+        <div class="form-header"><span class="form-kicker">MATCHLINE / INPUT</span><span class="form-step">01 — 02</span></div>
+        <label for="job-description">Job description <span>Required</span></label>
+        <textarea id="job-description" name="job_description" placeholder="Paste the job description here..." required>{{ job_description or '' }}</textarea>
+        <div class="form-row">
+            <div class="upload-field">
+                <label for="resume">Your resume <span>PDF, DOCX</span></label>
+                <label class="drop-zone" for="resume">
+                    <span class="upload-icon" aria-hidden="true">↑</span>
+                    <span class="upload-copy"><strong id="file-name">Drop your resume here</strong><small>or click to browse</small></span>
+                    <input id="resume" name="resume" type="file" accept=".pdf,.doc,.docx" required>
+                </label>
+            </div>
+            <div class="form-submit">
+                <span class="form-hint">Ready when you are.</span>
+                <button class="button button-primary" type="submit">Run pipeline <span aria-hidden="true">↗</span></button>
+            </div>
+        </div>
+        {% if submitted %}
+        <div class="submission-notice"><span>✓</span> Inputs received{% if resume_name %}: {{ resume_name }}{% endif %}. The scoring API will connect here next.</div>
+        {% endif %}
+    </form>
+</section>
+
+<script>
+    const resumeInput = document.getElementById('resume');
+    const fileName = document.getElementById('file-name');
+    resumeInput.addEventListener('change', () => {
+        fileName.textContent = resumeInput.files.length ? resumeInput.files[0].name : 'Drop your resume here';
+    });
+</script>
+{% endblock %}
