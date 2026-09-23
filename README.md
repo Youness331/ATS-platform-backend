@@ -46,6 +46,22 @@ Set these n8n environment variables before activating the workflow:
 The workflow extracts the PDF text, asks the model for structured ATS findings, then posts the result to:
 `POST /api/analyses/{analysis_id}/result`.
 
+## Railway service wiring
+
+For the current Railway deployment, configure the FastAPI service variable:
+
+```text
+N8N_WEBHOOK_URL=https://n8n-production-2387.up.railway.app/webhook/ats-resume-analysis
+```
+
+In the n8n **Send result to FastAPI** node, use:
+
+```text
+={{'https://ats-app-production-47fe.up.railway.app/api/analyses/' + $json.analysis_id + '/result'}}
+```
+
+Both services must use their public Railway HTTPS domains. `localhost`, `127.0.0.1`, and `host.docker.internal` only work for local development.
+
 ## API contracts
 
 `POST /api/analyses` accepts multipart form data with `job_description` and a PDF `resume`. It returns `202` with an `analysis_id` and `status_url`.

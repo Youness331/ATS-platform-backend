@@ -78,7 +78,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{'http://127.0.0.1:8000/api/analyses/' + $json.analysis_id + '/result'}}",
+        "url": "={{'https://ats-app-production-47fe.up.railway.app/api/analyses/' + $json.analysis_id + '/result'}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

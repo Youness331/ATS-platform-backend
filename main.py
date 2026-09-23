@@ -27,7 +27,7 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 N8N_WEBHOOK_URL = os.getenv(
     "N8N_WEBHOOK_URL",
-    "http://localhost:5678/webhook/ats-resume-analysis",
+    "https://n8n-production-2387.up.railway.app/webhook/ats-resume-analysis",
 )
 init_db()
 
