@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -24,7 +25,10 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app = FastAPI(title="Matchline ATS")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
-N8N_WEBHOOK_URL = "http://localhost:5678/webhook/ats-resume-analysis"
+N8N_WEBHOOK_URL = os.getenv(
+    "N8N_WEBHOOK_URL",
+    "http://localhost:5678/webhook/ats-resume-analysis",
+)
 init_db()
 
 

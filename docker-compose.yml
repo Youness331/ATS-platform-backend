@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    container_name: matchline-ats
+    ports:
+      - "8000:8000"
+    environment:
+      N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/ats-resume-analysis
+      MATCHLINE_DATABASE_PATH: /app/data/matchline.db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - matchline_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  matchline_data:
