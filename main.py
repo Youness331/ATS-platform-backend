@@ -9,6 +9,15 @@ from pydantic import BaseModel, Field
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from database import (
+    complete_analysis,
+    create_analysis as create_analysis_record,
+    get_analysis as get_analysis_record,
+    init_db,
+    list_analyses,
+    update_status,
+)
+
 BASE_DIR = Path(__file__).resolve().parent
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -16,7 +25,7 @@ app = FastAPI(title="Matchline ATS")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 N8N_WEBHOOK_URL = "http://localhost:5678/webhook/ats-resume-analysis"
-analyses: dict[str, dict] = {}
+init_db()
 
 
 class AnalysisResult(BaseModel):
@@ -63,6 +72,18 @@ async def results_page(request: Request, analysis_id: UUID):
     )
 
 
+@app.get("/account", response_class=HTMLResponse)
+async def account_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="account.html",
+        context={
+            "active_page": "account",
+            "analyses": list_analyses(),
+        },
+    )
+
+
 @app.post("/analyze", response_class=HTMLResponse)
 async def submit_analysis(
     request: Request,
@@ -98,12 +119,7 @@ async def create_analysis(
 
     analysis_id = uuid4()
     resume_bytes = await resume.read()
-    analyses[str(analysis_id)] = {
-        "analysis_id": str(analysis_id),
-        "status": "queued",
-        "filename": resume.filename,
-        "result": None,
-    }
+    create_analysis_record(str(analysis_id), resume.filename, job_description)
 
     form_data = {
         "analysis_id": str(analysis_id),
@@ -121,10 +137,10 @@ async def create_analysis(
             response = await client.post(N8N_WEBHOOK_URL, data=form_data, files=files)
             response.raise_for_status()
     except httpx.HTTPError as error:
-        analyses[str(analysis_id)]["status"] = "failed"
+        update_status(str(analysis_id), "failed")
         raise HTTPException(status_code=502, detail="Could not queue analysis in n8n") from error
 
-    analyses[str(analysis_id)]["status"] = "processing"
+    update_status(str(analysis_id), "processing")
     return JSONResponse(
         status_code=202,
         content={
@@ -138,21 +154,26 @@ async def create_analysis(
 @app.post("/api/analyses/{analysis_id}/result")
 async def receive_analysis_result(analysis_id: UUID, callback: AnalysisCallback):
     """Receive the normalized result from the n8n callback node."""
-    analysis = analyses.get(str(analysis_id))
+    analysis = get_analysis_record(str(analysis_id))
     if analysis is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
     if callback.analysis_id != analysis_id:
         raise HTTPException(status_code=400, detail="analysis_id does not match callback URL")
 
-    analysis["status"] = callback.status
-    analysis["result"] = callback.result.model_dump()
-    return {"ok": True, "analysis_id": str(analysis_id), "status": analysis["status"]}
+    complete_analysis(str(analysis_id), callback.status, callback.result.model_dump())
+    return {"ok": True, "analysis_id": str(analysis_id), "status": callback.status}
+
+
+@app.get("/api/analyses")
+async def get_analyses():
+    """Return the local account's analysis history."""
+    return {"analyses": list_analyses()}
 
 
 @app.get("/api/analyses/{analysis_id}")
 async def get_analysis(analysis_id: UUID):
     """Poll the current analysis status or retrieve its completed result."""
-    analysis = analyses.get(str(analysis_id))
+    analysis = get_analysis_record(str(analysis_id))
     if analysis is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
     return analysis

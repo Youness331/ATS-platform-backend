@@ -34,6 +34,8 @@ The workflow extracts the PDF text, asks the model for structured ATS findings, 
 
 `GET /api/analyses/{analysis_id}` returns `queued`, `processing`, `completed`, or `failed`, plus the completed result when available.
 
+`GET /api/analyses` returns the current account's complete analysis history. The browser account page is available at `/account`, and completed records link back to their result dashboard.
+
 `POST /api/analyses/{analysis_id}/result` is the n8n callback. Its JSON body is:
 
 ```json
@@ -53,4 +55,4 @@ The workflow extracts the PDF text, asks the model for structured ATS findings, 
 }
 ```
 
-The current analysis store is in memory for development. Replace it with a database or cache before deploying multiple workers.
+Analysis metadata and completed results are stored in the local SQLite database `matchline.db`. Resume binaries are sent to n8n for processing and are not stored locally.
