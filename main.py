@@ -54,6 +54,15 @@ async def analyze_page(request: Request):
     )
 
 
+@app.get("/results/{analysis_id}", response_class=HTMLResponse)
+async def results_page(request: Request, analysis_id: UUID):
+    return templates.TemplateResponse(
+        request=request,
+        name="results.html",
+        context={"active_page": "results", "analysis_id": str(analysis_id)},
+    )
+
+
 @app.post("/analyze", response_class=HTMLResponse)
 async def submit_analysis(
     request: Request,

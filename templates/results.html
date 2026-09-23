@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Analysis dashboard | Matchline ATS{% endblock %}
+{% block content %}
+<section class="results-page" data-analysis-id="{{ analysis_id }}">
+    <div id="results-loading" class="results-loading">
+        <p class="eyebrow"><span class="eyebrow-line"></span> Matchline / Results</p>
+        <h1>Reading your<br><em>signal.</em></h1>
+        <p>Loading the completed analysis...</p>
+    </div>
+
+    <div id="results-content" hidden>
+        <div class="results-header reveal">
+            <div>
+                <p class="eyebrow"><span class="eyebrow-line"></span> Matchline / Analysis complete</p>
+                <h1>Your match,<br><em>decoded.</em></h1>
+            </div>
+            <a class="button button-secondary" href="/analyze">New analysis <span aria-hidden="true">↗</span></a>
+        </div>
+
+        <div class="results-overview reveal reveal-delay">
+            <div class="score-panel">
+                <div class="score-ring" id="score-ring"><div><strong id="score-value">--</strong><span>/ 100</span></div></div>
+                <div><p class="mini-label">MATCH SCORE</p><h2 id="verdict">-</h2></div>
+            </div>
+            <div class="summary-panel"><p class="mini-label">ANALYST SUMMARY</p><p id="summary"></p></div>
+        </div>
+
+        <div class="result-columns">
+            <section class="result-section strengths-section reveal reveal-delay-2">
+                <div class="result-section-heading"><span class="result-icon icon-positive">+</span><div><p class="mini-label">What is working</p><h2>Strengths</h2></div></div>
+                <ul id="strengths" class="insight-list"></ul>
+            </section>
+            <section class="result-section gaps-section reveal reveal-delay-2">
+                <div class="result-section-heading"><span class="result-icon icon-warning">!</span><div><p class="mini-label">Worth a closer look</p><h2>Gaps</h2></div></div>
+                <ul id="gaps" class="insight-list"></ul>
+            </section>
+        </div>
+
+        <section class="recommendations-section reveal reveal-delay-2">
+            <div class="result-section-heading"><span class="result-icon icon-recommendation">↗</span><div><p class="mini-label">Your next moves</p><h2>Recommendations</h2></div></div>
+            <div id="recommendations" class="recommendation-grid"></div>
+        </section>
+
+        <div class="keyword-columns reveal reveal-delay-2">
+            <section class="keyword-section"><p class="mini-label">Matched keywords</p><div id="matched-keywords" class="keyword-list"></div></section>
+            <section class="keyword-section"><p class="mini-label">Missing keywords</p><div id="missing-keywords" class="keyword-list"></div></section>
+        </div>
+    </div>
+
+    <div id="results-error" class="results-error" hidden></div>
+</section>
+
+<script>
+    const analysisId = document.querySelector('.results-page').dataset.analysisId;
+    const loading = document.getElementById('results-loading');
+    const content = document.getElementById('results-content');
+    const errorBox = document.getElementById('results-error');
+
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>'"]/g, (character) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'
+        })[character]);
+    }
+
+    function renderList(targetId, items) {
+        document.getElementById(targetId).innerHTML = (items || []).map((item) => '<li>' + escapeHtml(item) + '</li>').join('');
+    }
+
+    function renderResult(payload) {
+        const result = payload.result;
+        document.getElementById('score-value').textContent = result.score;
+        document.getElementById('score-ring').style.setProperty('--score', result.score * 3.6 + 'deg');
+        document.getElementById('verdict').textContent = result.verdict;
+        document.getElementById('summary').textContent = result.summary;
+        renderList('strengths', result.strengths);
+        renderList('gaps', result.gaps);
+        document.getElementById('recommendations').innerHTML = (result.recommendations || []).map((item, index) => '<article><span>0' + (index + 1) + '</span><p>' + escapeHtml(item) + '</p></article>').join('');
+        document.getElementById('matched-keywords').innerHTML = (result.matched_keywords || []).map((item) => '<span class="keyword keyword-match">' + escapeHtml(item) + '</span>').join('');
+        document.getElementById('missing-keywords').innerHTML = (result.missing_keywords || []).map((item) => '<span class="keyword keyword-missing">' + escapeHtml(item) + '</span>').join('');
+        loading.hidden = true;
+        content.hidden = false;
+    }
+
+    fetch('/api/analyses/' + analysisId)
+        .then((response) => response.ok ? response.json() : Promise.reject(new Error('Analysis not found')))
+        .then((payload) => payload.status === 'completed' ? renderResult(payload) : Promise.reject(new Error('This analysis is still processing. Return to the analysis page and wait a moment.')))
+        .catch((error) => {
+            loading.hidden = true;
+            errorBox.textContent = error.message;
+            errorBox.hidden = false;
+        });
+</script>
+{% endblock %}

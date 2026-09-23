@@ -79,7 +79,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{($env.ATS_BACKEND_URL || 'http://host.docker.internal:8000') + '/api/analyses/' + $json.analysis_id + '/result'}}",
+        "url": "={{'http://host.docker.internal:8000/api/analyses/' + $json.analysis_id + '/result'}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

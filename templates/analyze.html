@@ -15,7 +15,7 @@
         <textarea id="job-description" name="job_description" placeholder="Paste the job description here..." required>{{ job_description or '' }}</textarea>
         <div class="form-row">
             <div class="upload-field">
-                <label for="resume">Your resume <span>PDF, DOCX</span></label>
+                <label for="resume">Your resume <span>PDF</span></label>
                 <label class="drop-zone" for="resume">
                     <span class="upload-icon" aria-hidden="true">↑</span>
                     <span class="upload-copy"><strong id="file-name">Drop your resume here</strong><small>or click to browse</small></span>
@@ -49,8 +49,9 @@
             const response = await fetch(analysisForm.action, { method: 'POST', body: new FormData(analysisForm) });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.detail || 'Unable to start analysis');
-            notice.innerHTML = '<span>✓</span> Analysis ' + payload.analysis_id + ' is now processing.';
+            notice.innerHTML = '<span>✓</span> Analysis started. We will open your dashboard when it is ready.';
             notice.hidden = false;
+            waitForResult(payload.analysis_id);
         } catch (error) {
             notice.innerHTML = '<span>!</span> ' + error.message;
             notice.hidden = false;
@@ -59,5 +60,26 @@
             button.firstChild.textContent = 'Run pipeline ';
         }
     });
+
+    async function waitForResult(analysisId) {
+        while (true) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            try {
+                const response = await fetch('/api/analyses/' + analysisId);
+                const status = await response.json();
+                if (status.status === 'completed') {
+                    window.location.href = '/results/' + analysisId;
+                    return;
+                }
+                if (status.status === 'failed') {
+                    throw new Error('The analysis workflow failed. Please try again.');
+                }
+            } catch (error) {
+                notice.innerHTML = '<span>!</span> ' + error.message;
+                notice.hidden = false;
+                return;
+            }
+        }
+    }
 </script>
 {% endblock %}
